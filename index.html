@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>リンク集</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      background: #e3f2fd;
+      color: #333;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 40px;
+      text-align: center;
+    }
+    h1 {
+      color: #1976d2;
+      margin-bottom: 30px;
+    }
+    .btn {
+      display: inline-block;
+      margin: 10px;
+      padding: 14px 28px;
+      font-size: 16px;
+      color: white;
+      background-color: #4caf50;
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .btn:hover {
+      background-color: #43a047;
+    }
+  </style>
+</head>
+<body>
+  <h1>登録リンク一覧</h1>
+  <div id="buttons">読み込み中...</div>
+
+  <script>
+    fetch("link.json")
+      .then(res => res.ok ? res.json() : [])
+      .catch(() => [])
+      .then(data => {
+        const container = document.getElementById("buttons");
+        container.innerHTML = "";
+        if (!data.length) {
+          container.textContent = "まだリンクが登録されていません。";
+          return;
+        }
+        data.forEach(link => {
+          const btn = document.createElement("button");
+          btn.className = "btn";
+          btn.textContent = link.name;
+          btn.onclick = () => window.open(link.url, "_blank");
+          container.appendChild(btn);
+        });
+      });
+  </script>
+</body>
+</html>
