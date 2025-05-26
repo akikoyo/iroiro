@@ -2,55 +2,88 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Webhook復号（デバッグ付き）</title>
+  <title>復号テスト</title>
   <style>
-    body { background: #111; color: #eee; padding: 20px; font-family: monospace; }
-    textarea, input, button {
-      width: 100%; padding: 10px; margin-top: 10px;
-      background: #222; border: 1px solid #555; color: #fff;
-    }
-    #result { margin-top: 20px; white-space: pre-wrap; }
+    body { background: #111; color: #eee; font-family: monospace; padding: 2rem; }
+    textarea { width: 100%; height: 100px; margin-bottom: 1rem; }
+    button { padding: 0.5rem 1rem; }
+    #result { white-space: pre-wrap; margin-top: 1rem; background: #222; padding: 1rem; border: 1px solid #333; }
   </style>
 </head>
 <body>
-  <h2>Discord Webhook 復号デバッグ</h2>
-  <label>Base64:</label>
-  <textarea id="base64" rows="5">6ITo2CnJhRsWlq2I34B5eWODqyV5+hOnU86PhW5nSfM0rSx8dNU62ePpzGvn9nZOT+qjlDrDnrm31BXMotPKz4bR96W6W0ZNVQLKGd7J9UgtJYmPlbMpRvmZIDdB7KP8TTOuCF/w/s/e5X3ILNFzdCXpfBDsnNTffdwh3XdhoPgkPNRLF6Hu3juXZn56s5+Z8mhuMAA=</textarea>
+  <h2>復号テスト</h2>
+  <label>暗号データ:</label>
+  <textarea id="input"></textarea>
   <label>パスワード:</label>
-  <input id="password" value="fuckinyou" />
-  <button onclick="decrypt()">復号</button>
-  <div id="result"></div>
+  <input id="pw" type="text" value="password"><br><br>
+  <button onclick="run()">復号</button>
+  <div id="result">ここに結果</div>
 
   <script>
-    async function decrypt() {
-      const base64 = document.getElementById("base64").value.trim();
-      const password = document.getElementById("password").value;
-      const resBox = document.getElementById("result");
+    function b64ToUint8(b64) {
+      let bin = atob(b64);
+      let buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      return buf;
+    }
 
-      try {
-        const raw = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-        const salt = raw.slice(0, 16);
-        const iv = raw.slice(16, 28);
-        const data = raw.slice(28);
+    async function sha256(data) {
+      const buf = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+      const hash = await crypto.subtle.digest('SHA-256', buf);
+      return new Uint8Array(hash);
+    }
 
-        const keyMaterial = await crypto.subtle.importKey(
-          "raw", new TextEncoder().encode(password),
-          { name: "PBKDF2" }, false, ["deriveKey"]
+    async function hmacSHA256(msg, key) {
+      const keyData = typeof key === 'string' ? new TextEncoder().encode(key) : key;
+      const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const data = typeof msg === 'string' ? new TextEncoder().encode(msg) : msg;
+      const sig = await crypto.subtle.sign('HMAC', cryptoKey, data);
+      return Array.from(new Uint8Array(sig)).map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+
+    function xorBuf(a, b) {
+      let out = new Uint8Array(a.length);
+      for (let i = 0; i < a.length; i++) out[i] = a[i] ^ b[i % b.length];
+      return out;
+    }
+
+    async function scryptNode(password, salt, N = 16384, r = 8, p = 1, dkLen = 32) {
+      return new Promise((resolve, reject) => {
+        window.scrypt(
+          new TextEncoder().encode(password),
+          salt, N, r, p, dkLen,
+          (err, prog, key) => err ? reject(err) : resolve(new Uint8Array(key))
         );
-        const key = await crypto.subtle.deriveKey({
-          name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256"
-        }, keyMaterial, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+      });
+    }
 
-        const decrypted = await crypto.subtle.decrypt(
-          { name: "AES-GCM", iv }, key, data
-        );
-        const decoded = new TextDecoder().decode(decrypted);
-        resBox.textContent = "✅ 復号成功:\n" + decoded;
-      } catch (e) {
-        resBox.textContent = "❌ 復号失敗:\n" + (e.message || e);
-        console.error(e);
-      }
+    async function decrypt(enc, password) {
+      let [saltHex, payload, hmac] = enc.trim().split(':');
+      if (!saltHex || !payload || !hmac) throw new Error("形式不正");
+      const salt = new Uint8Array(saltHex.match(/../g).map(x => parseInt(x, 16)));
+      const key = await scryptNode(password, salt);
+      const check = await hmacSHA256(payload, password);
+      if (check !== hmac) throw new Error("HMAC一致しない");
+      const buf = b64ToUint8(payload);
+      const iv = buf.slice(0, 12), tag = buf.slice(12, 28), encData = buf.slice(28);
+      const mask = await sha256(password);
+      const ct = xorBuf(encData, mask);
+      const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "AES-GCM" }, false, ["decrypt"]);
+      const full = new Uint8Array([...ct, ...tag]);
+      const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv, tagLength: 128 }, cryptoKey, full);
+      return new TextDecoder().decode(dec);
+    }
+
+    function run() {
+      let data = document.getElementById("input").value;
+      let pw = document.getElementById("pw").value;
+      decrypt(data, pw).then(res => {
+        document.getElementById("result").textContent = res;
+      }).catch(err => {
+        document.getElementById("result").textContent = "エラー: " + err.message;
+      });
     }
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/scrypt-js@3.0.2/scrypt.min.js"></script>
 </body>
 </html>
