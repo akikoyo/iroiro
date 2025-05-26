@@ -1,44 +1,35 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Discord Webhook Info Checker</title>
+  <meta charset="UTF-8">
+  <title>Webhook 情報取得ツール</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { background: #0f0f0f; color: #fff; font-family: sans-serif; padding: 20px; }
+    input, button { padding: 10px; margin: 10px 0; width: 100%; background: #1a1a1a; border: none; color: #fff; }
+    button { cursor: pointer; background: #333; }
+    pre { background: #1c1c1c; padding: 15px; overflow-x: auto; }
+  </style>
 </head>
-<body style="background:#2c2f33;color:#fff;font-family:sans-serif;text-align:center;padding:2em">
-  <h1>🔍 Discord Webhook Info チェッカー</h1>
-  <input type="text" id="webhookUrl" placeholder="Webhook URL" style="width:80%;padding:10px;border:none;border-radius:8px;" />
-  <button onclick="checkWebhook()" style="padding:10px 20px;margin-top:10px;border:none;border-radius:8px;background:#7289da;color:#fff">確認</button>
-  <pre id="result" style="margin-top:20px;white-space:pre-wrap;text-align:left;background:#23272a;padding:20px;border-radius:10px"></pre>
+<body>
+  <h1>🔍 Discord Webhook 情報取得</h1>
+  <input type="text" id="webhookUrl" placeholder="Webhook URL を入力">
+  <button onclick="getWebhookInfo()">取得</button>
+  <pre id="result">ここに結果が表示されます</pre>
 
   <script>
-    async function checkWebhook() {
+    async function getWebhookInfo() {
       const url = document.getElementById('webhookUrl').value.trim();
-      const resultEl = document.getElementById('result');
-
-      if (!url || !url.startsWith('https://discord.com/api/webhooks/')) {
-        resultEl.textContent = '[❌] 有効なWebhook URLを入力してください';
-        return;
-      }
+      const result = document.getElementById('result');
+      result.textContent = '取得中...';
 
       try {
         const res = await fetch(url);
-        if (!res.ok) {
-          resultEl.textContent = `[❌] ステータス: ${res.status} - 取得に失敗しました`;
-          return;
-        }
-
-        const data = await res.json();
-        resultEl.textContent =
-          `✅ Webhook情報:\n` +
-          `・名前: ${data.name}\n` +
-          `・ID: ${data.id}\n` +
-          `・ギルドID: ${data.guild_id || '不明'}\n` +
-          `・チャンネルID: ${data.channel_id || '不明'}\n` +
-          `・タイプ: ${data.type === 1 ? '通常' : 'Slack互換'}\n` +
-          `・アバター: ${data.avatar ? 'https://cdn.discordapp.com/avatars/' + data.id + '/' + data.avatar + '.png' : 'なし'}`;
+        if (!res.ok) throw new Error(`失敗: ステータスコード ${res.status}`);
+        const json = await res.json();
+        result.textContent = JSON.stringify(json, null, 2);
       } catch (err) {
-        resultEl.textContent = `[❌] エラー: ${err.message}`;
+        result.textContent = `エラー: ${err.message}`;
       }
     }
   </script>
