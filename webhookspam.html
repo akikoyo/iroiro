@@ -66,8 +66,8 @@
       };
 
       try {
-        console.log("📤 Webhook送信準備中…");
-        console.log(payload); 
+        log("📤 Webhook送信準備中…");
+        log(payload); 
 
         const res = await fetch(WEBHOOK, {
           method: "POST",
