@@ -66,6 +66,9 @@
       };
 
       try {
+        console.log("📤 Webhook送信準備中…");
+        console.log(payload); 
+
         const res = await fetch(WEBHOOK, {
           method: "POST",
           headers: {
@@ -73,6 +76,7 @@
           },
           body: JSON.stringify(payload)
         });
+
 
         if (res.ok) {
           log("✅ Sent");
