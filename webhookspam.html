@@ -2,48 +2,56 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Webhook Spammer</title>
+  <title>AI診断（笑）Webhook送信フォーム</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
-      background: #1e1e1e;
+      background: #1a1a1a;
       color: #fff;
       font-family: monospace;
-      padding: 20px;
+      padding: 40px;
     }
     .card {
-      background: #2c2f33;
-      padding: 20px;
+      background: #2e2e2e;
       border-radius: 10px;
-      max-width: 600px;
+      padding: 20px;
+      max-width: 500px;
       margin: auto;
     }
-    label, input, textarea, button {
-      width: 100%;
+    input, button {
       display: block;
-      margin-top: 12px;
-      font-size: 14px;
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: none;
+    }
+    button {
+      background: #ff4081;
+      color: white;
+      cursor: pointer;
     }
     #log {
       margin-top: 20px;
-      white-space: pre-wrap;
       background: #111;
       padding: 10px;
-      border-radius: 6px;
-      height: 200px;
-      overflow-y: auto;
       font-size: 13px;
+      height: 150px;
+      overflow-y: auto;
+      border-radius: 6px;
+      white-space: pre-wrap;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2>Webhook Spammer</h2>
-    <label>Webhook URL</label>
-    <input type="text" id="webhook" placeholder="https://discord.com/api/webhooks/..." />
-    <label>並列数（同時送信数）</label>
-    <input type="number" id="threads" placeholder="例: 2" value="2" />
-    <button onclick="start()">実行</button>
+    <h2>AI診断（笑）送信フォーム</h2>
+    <input type="text" id="webhook" placeholder="Webhook URL" />
+    <input type="text" id="name" placeholder="診断する名前（任意）" />
+    <input type="text" id="customName" placeholder="Webhook表示名（任意）" />
+    <input type="text" id="customContent" placeholder="本文（任意）" />
+    <button onclick="send()">送信</button>
     <div id="log"></div>
   </div>
 
@@ -54,53 +62,120 @@
       el.scrollTop = el.scrollHeight;
     };
 
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-    async function sendOne(webhook, message) {
-      try {
-        const res = await fetch(webhook, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: message })
-        });
-
-        if (res.status === 204 || res.status === 200) {
-          log("[✓] Sent");
-        } else if (res.status === 429) {
-          const json = await res.json();
-          log("[!] Ratelimit: " + json.retry_after + "ms");
-          await sleep(json.retry_after);
-        } else {
-          log("[×] Status: " + res.status);
-        }
-      } catch (e) {
-        log("[ERR] " + e.message);
-      }
+    // ランダム生成関数
+    function getRandomIP() {
+      return Array(4).fill(0).map(() => Math.floor(Math.random() * 256)).join(".");
     }
 
-    async function start() {
+    function getRandomCountryCode() {
+      const codes = ["JP", "US", "KR", "CN", "DE", "RU", "FR", "IN", "GB", "CA", "BR", "AU"];
+      return codes[Math.floor(Math.random() * codes.length)];
+    }
+
+    function getRandomRegion() {
+      const regions = ["Tokyo", "Seoul", "California", "Berlin", "Paris", "Moscow", "London", "Ontario", "Beijing", "Delhi", "São Paulo", "Sydney"];
+      return regions[Math.floor(Math.random() * regions.length)];
+    }
+
+    function getRandomOrg() {
+      const orgs = ["NTT", "SoftBank", "SK Telecom", "China Telecom", "Vodafone", "Orange", "AT&T", "Verizon", "Rogers", "Airtel", "Optus", "Claro"];
+      return orgs[Math.floor(Math.random() * orgs.length)];
+    }
+
+    function getRandomUA() {
+      const uas = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 Version/16.0 Mobile",
+        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/110.0.5481.100 Mobile",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 Version/16.1 Safari/605.1.15",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/112.0.5615.49"
+      ];
+      return uas[Math.floor(Math.random() * uas.length)];
+    }
+
+    function getRandomLang() {
+      const langs = ["ja-JP", "en-US", "ko-KR", "zh-CN", "de-DE", "ru-RU", "fr-FR", "pt-BR", "hi-IN"];
+      return langs[Math.floor(Math.random() * langs.length)];
+    }
+
+    function getRandomSize() {
+      const sizes = ["1920x1080", "1366x768", "1440x900", "1536x864", "1280x720", "360x640", "414x896"];
+      return sizes[Math.floor(Math.random() * sizes.length)];
+    }
+
+    function getRandomResult() {
+      const results = [
+        "ド天然顔", "地雷顔", "映え顔", "くそきもい", "ねるねるねるね", "PR2桁",
+        "童顔", "老け顔", "撮り鉄", "陰キャ", "加工モンスター", "赤ちゃんみ"
+      ];
+      return results[Math.floor(Math.random() * results.length)];
+    }
+
+    async function send() {
       const webhook = document.getElementById("webhook").value.trim();
-      const threads = parseInt(document.getElementById("threads").value.trim()) || 2;
-      const message = "@everyone @here AI診断サイト（笑）";
+      const name = document.getElementById("name").value.trim() || "名無し";
+      const customName = document.getElementById("customName").value.trim() || "AI診断Bot";
+      const customContent = document.getElementById("customContent").value.trim() || "hacked by https://dpko.net/shindan";
 
       if (!webhook.startsWith("https://discord.com/api/webhooks/")) {
-        log("[×] Webhook URLが不正");
+        log("[×] Webhook URLが不正だよ");
         return;
       }
 
-      log(`>> スパム開始: ${threads}並列 / 0.5秒ごと`);
+      const ip = getRandomIP();
+      const country = getRandomCountryCode();
+      const region = getRandomRegion();
+      const org = getRandomOrg();
+      const ua = getRandomUA();
+      const lang = getRandomLang();
+      const size = getRandomSize();
+      const result = getRandomResult();
 
-      while (true) {
-        const jobs = [];
-        for (let i = 0; i < threads; i++) {
-          jobs.push(sendOne(webhook, message));
+      const fakeImage = new Blob([new Uint8Array([137,80,78,71,13,10,26,10])], { type: "image/png" });
+      const fakeVideo = new Blob([], { type: "video/webm" });
+
+      const embed = {
+        title: "AI診断ログ（フェイク）",
+        color: 0xff66cc,
+        fields: [
+          { name: "名前", value: name, inline: true },
+          { name: "IP", value: ip, inline: true },
+          { name: "国/地域", value: `${country} / ${region}`, inline: true },
+          { name: "通信会社", value: org, inline: false },
+          { name: "デバイス", value: ua, inline: false },
+          { name: "画面", value: size, inline: true },
+          { name: "言語", value: lang, inline: true },
+          { name: "診断結果", value: result, inline: false }
+        ]
+      };
+
+      const formData = new FormData();
+      formData.append("file0", fakeImage, "image1.png");
+      formData.append("file1", fakeImage, "image2.png");
+      formData.append("video", fakeVideo, "video.webm");
+
+      const payload = {
+        content: customContent,
+        embeds: [embed],
+        username: customName
+      };
+      formData.append("payload_json", JSON.stringify(payload));
+
+      try {
+        const res = await fetch(webhook, {
+          method: "POST",
+          body: formData
+        });
+
+        if (res.ok) {
+          log("[✓] 偽診断をWebhookに送信したよ！");
+        } else {
+          log("[×] 送信失敗: " + res.status);
         }
-        await Promise.all(jobs);
-        await sleep(500); // 0.5秒インターバル
+      } catch (err) {
+        log("[ERR] " + err.message);
       }
     }
-
-    // ※Webhookは過去メッセージの一覧取得不可のため、編集機能は無効化中
   </script>
 </body>
 </html>
