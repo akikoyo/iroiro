@@ -2,54 +2,31 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Webhook 復号ツール</title>
+  <title>Webhook復号（デバッグ付き）</title>
   <style>
-    body {
-      font-family: sans-serif;
-      background: #121212;
-      color: #eee;
-      padding: 20px;
+    body { background: #111; color: #eee; padding: 20px; font-family: monospace; }
+    textarea, input, button {
+      width: 100%; padding: 10px; margin-top: 10px;
+      background: #222; border: 1px solid #555; color: #fff;
     }
-    textarea, input {
-      width: 100%;
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 5px;
-      border: none;
-      font-size: 14px;
-    }
-    button {
-      margin-top: 10px;
-      padding: 10px;
-      background: #2ecc71;
-      border: none;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    #result {
-      margin-top: 20px;
-      white-space: pre-wrap;
-      background: #1e1e1e;
-      padding: 10px;
-      border-radius: 5px;
-    }
+    #result { margin-top: 20px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>Discord Webhook 復号ツール</h1>
-  <label>暗号化された Base64 データ</label>
-  <textarea id="base64" rows="6" placeholder="ここにBase64文字列を貼り付けてください"></textarea>
-  <label>パスワード（初期値）</label>
+  <h2>Discord Webhook 復号デバッグ</h2>
+  <label>Base64:</label>
+  <textarea id="base64" rows="5">6ITo2CnJhRsWlq2I34B5eWODqyV5+hOnU86PhW5nSfM0rSx8dNU62ePpzGvn9nZOT+qjlDrDnrm31BXMotPKz4bR96W6W0ZNVQLKGd7J9UgtJYmPlbMpRvmZIDdB7KP8TTOuCF/w/s/e5X3ILNFzdCXpfBDsnNTffdwh3XdhoPgkPNRLF6Hu3juXZn56s5+Z8mhuMAA=</textarea>
+  <label>パスワード:</label>
   <input id="password" value="fuckinyou" />
-  <button onclick="decrypt()">復号する</button>
+  <button onclick="decrypt()">復号</button>
   <div id="result"></div>
 
   <script>
     async function decrypt() {
       const base64 = document.getElementById("base64").value.trim();
       const password = document.getElementById("password").value;
-      const resultBox = document.getElementById("result");
+      const resBox = document.getElementById("result");
+
       try {
         const raw = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
         const salt = raw.slice(0, 16);
@@ -57,36 +34,21 @@
         const data = raw.slice(28);
 
         const keyMaterial = await crypto.subtle.importKey(
-          "raw",
-          new TextEncoder().encode(password),
-          { name: "PBKDF2" },
-          false,
-          ["deriveKey"]
+          "raw", new TextEncoder().encode(password),
+          { name: "PBKDF2" }, false, ["deriveKey"]
         );
-
-        const key = await crypto.subtle.deriveKey(
-          {
-            name: "PBKDF2",
-            salt,
-            iterations: 100000,
-            hash: "SHA-256",
-          },
-          keyMaterial,
-          { name: "AES-GCM", length: 256 },
-          false,
-          ["decrypt"]
-        );
+        const key = await crypto.subtle.deriveKey({
+          name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256"
+        }, keyMaterial, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
 
         const decrypted = await crypto.subtle.decrypt(
-          { name: "AES-GCM", iv },
-          key,
-          data
+          { name: "AES-GCM", iv }, key, data
         );
-
         const decoded = new TextDecoder().decode(decrypted);
-        resultBox.textContent = `✅ 復号結果:\n${decoded}`;
-      } catch (err) {
-        resultBox.textContent = `❌ エラー: ${err.message}`;
+        resBox.textContent = "✅ 復号成功:\n" + decoded;
+      } catch (e) {
+        resBox.textContent = "❌ 復号失敗:\n" + (e.message || e);
+        console.error(e);
       }
     }
   </script>
